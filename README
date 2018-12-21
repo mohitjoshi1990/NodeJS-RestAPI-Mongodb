@@ -1,0 +1,467 @@
+			Aims
+			====
+
+The aims of this project are as follows:
+
+  + To introduce you to building
+    .<https://en.wikipedia.org/wiki/Representational_state_transfer>
+    REST web services.
+
+  + To expose you to the potential of
+    .<https://en.wikipedia.org/wiki/HATEOAS> HATEOS in REST.
+
+  + To give you some familiarity with using the
+    .<https://expressjs.com/> express.js web framework.
+
+
+			Requirements
+			============
+
+You must check in a `submit/prj3-sol` directory in your gitlab
+project such that typing `npm install` within that directory is
+sufficient to run the project using `./index.js` with usage
+as follows:
+
+```
+$ ./index.js MONGO_DB_URL PORT NOISE_FILE [CONTENT_FILE...]
+```
+
+where
+
+  : `MONGO_DB_URL` :
+    Specifies the URL of the mongo database to be used
+    for storing document information.
+
+  : `PORT` :
+    Specifies the port at which your program will listen
+    for HTTP requests.
+
+  : `NOISE_FILE` :
+    Specifies a path to a file containing words which should
+    be ignored within document content and searches.
+
+  : `CONTENT_FILE...` :
+    Specifies zero-or-more paths to files containing content
+    which should be used for initializing the document collection.
+
+When started, the program will write its process id "PID" into a file
+`.pid` in the current directory.
+
+Many of the web services described below are required to return a list
+of `links` to resources.  Each link will have two properties:
+
+  : `href` :
+    The URL of the linked resource.
+    
+  : `rel` :
+    The relationship the resource identified with the link has
+    with the resource returned by the web service.
+
+The project requires three types of `rel` relationships:
+
+  : `self` :
+    The `href` links back to the returned resource.
+
+  : `next` :
+    The `href` links back to the "next" resource(s) in a collection
+    of resources.
+
+  : `previous` :
+    The `href` links back to the "previous" resource(s) in a collection
+    of resources.
+
+Note that `next` and `previous` links can be used by a client for
+scrolling through a collection of resources.
+
+The requirements below only provide partial specifications for error
+conditions.  They specify the HTTP status code for only some errors.
+Suitable HTTP status codes should be returned for other errors.
+Specifically, any server errors should result in a 500 `SERVER_ERROR`
+status code.  Besides the HTTP status code, all error response bodies
+should contain a JSON object giving details of the error with the
+following fields:
+
+  : `code`:
+    A string specifying a code for the error.  
+
+  : `message` :
+    A human readable message giving the details of the error.
+
+Your server should support the following web services:
+
+  : *Get Content*:: `GET /docs/` .- "name" :
+    Return the contents of the document identified by "name".  The
+    returned JSON object should have a `content` field giving the
+    document's contents and a `links` property specifying a `self`
+    link.
+
+    If the document "name" does not exist, the server must return a
+    HTTP status of 404 `NOT FOUND` along with a JSON object giving
+    details of the error.
+
+  : *Search Content*:: `GET /docs?` "QUERY_PARAMS" :
+    Search for documents which satisfy query parameters "QUERY_PARAMS".
+    The supported parameters must include the following:
+
+      : `q` :
+        This *required* parameter specify the terms to be search for.
+        Successive search terms will be separated by space (usually
+        encoded as a `+` or `%20`).
+
+      : `count` :
+        This optional parameter should specify the maximum number
+        of returned results.  Default: 5.
+
+      : `start` :
+        This optional parameter should specify the index of the
+        first item in the returned results in the overall results.
+        Default: 0.
+
+    The returned JSON object should have the following fields:
+
+      : `results` :
+        A list of results which satisfy "QUERY_PARAMS".  Each item
+	in the list should be a JSON object containing the following
+	fields:
+
+          : `name` :
+	    The name of the matching document.
+
+          : `score` :
+	    A score which is a measure of how well the matching document
+	    matches the search terms.
+
+          : `lines` :
+	    A list of the matching lines from the document in source order.
+
+          : `href` :
+	    A URL which can be used to access the matching document.
+
+         The results must be ordered in descending order by score with
+	 ties broken by sorting in ascending lexicographical order by
+	 document name.
+
+	 If there are no documents which satisfy the "QUERY_PARAMS", then
+	 `results` should be returned as the empty list `[]`.
+
+      : `totalCount` :
+        An integer giving the total number of matching results.
+
+      : `links` :
+        A list of link objects providing links for the `self`, `next`
+	and `previous` `rel` relations.
+
+      If the request has incorrect "QUERY_PARAMS", then the server
+      must return a HTTP status of 400 `BAD REQUEST` along with a JSON
+      object giving details of the error.
+
+
+    : *Add Content*:: `POST /docs` :
+      This request will add a document to the collection.  The
+      request body must be a JSON object containing the following
+      fields:
+
+        : `name` :
+	  A name for the document being added.
+
+        : `content` :
+	  The contents of the document being added.
+
+      The document should be added to the collection updating the
+      contents if added earlier.  Success should be indicated
+      by a HTTP status code of 201 `CREATED` with a `Location`
+      header giving a URL for the added document and a JSON
+      body provided a `href` field with value specifying a URL
+      for the added document.
+      
+      If the request body is incorrect, then the server must return a
+      HTTP status of 400 `BAD REQUEST` along with a JSON object giving
+      details of the error.
+
+    : *Get Completions*:: `GET /completions?text=` .- "TEXT" :
+      Return a JSON list containing all the completions of the last
+      word in "TEXT" sorted in lexicographically ascending order.  
+
+      
+			 Project Log
+			 ===========
+
+
+An .<aux/LOG> "annotated log" of using the project using
+.<https://curl.haxx.se/> curl as a client is available.
+
+A working version of the project is also available on
+.<http://zdu.binghamton.edu:1235> "".  This server has been started
+with all the `_*.txt` files in .<../../data/corpus/snark> ""
+preloaded.  Note that to prevent database buildup, the database is
+reset every one hour.  This service is only available from
+*within* the campus network.
+
+
+	     	 	 Provided Files
+			 ==============
+
+The .<./prj3-sol> prj3-sol directory contains a start for your
+project.  It contains the following files:
+
+    : .<./prj3-sol/docs-ws.js?colorize=true> docs-ws.js:
+      This skeleton file constitutes the guts of your project.
+      You will need to flesh out the skeleton, adding code as per
+      the documentation.  You should feel free to add any auxiliary
+      function or method definitions as required.
+
+    : .<./prj3-sol/index.js?colorize=true> index.js:
+      This file provides the complete command-line behavior which is
+      required by your program.  It requires
+      .<./prj3-sol/docs-ws.js?colorize=true> docs-ws.js.  You
+      *must not* modify this file.
+     
+    : .<./prj3-sol/README> README:
+      A README file which must be submitted along with your project.
+      It contains an initial header which you must complete (replace
+      the dummy entries with your name, B-number and email address at
+      which you would like to receive project-related email).  After
+      the header you may include any content which you would like read
+      during the grading of your project.
+
+The course .<../../data> data directory containing test data has an
+additional .<../../data/corpus/snark> corpus with documents containing
+the individual verses of Lewis Carroll's
+.<https://www.poetryfoundation.org/poems/43909/the-hunting-of-the-snark>
+"The Hunting of the Snark" poem.  The emphasis of this project is not
+on indexing or the database and this new corpus allows searching many
+small documents.
+
+Additionally, the course .<../../lib> lib directory contains a
+modified solution to your previous project so that it can be used as a
+module for your project.  Changes from the solution include the
+following:
+
+  + The `find()` instance method of `DocFinder()` takes a single
+    string parameter specifying the words to be searched for
+    (previously it took a list of non-noise words).
+
+  + A single `create()` factory method is used to construct
+    a `DocFinder` instance (previously, construction required
+    a call to a constructor followed by a call to `init()`).
+
+  + The `lines` in the search result object has been changed from
+    a string to a list.
+
+			Testing your Project
+			====================
+
+Since this project requires implementing web services, you will
+need a web client for testing your project.  You could simply
+use a web browser but doing so will be inconvenient especially
+for `POST` requests.
+
+One alternative is to use a command-line client like
+.<https://curl.haxx.se/> curl as in the provided .<aux/LOG> "annotated
+log".  You can pretty-print the returned JSON using `json_pp` (already
+available on your VM) or `jq .`.  If using the latter, you will need to
+install it on your VM:
+
+```
+$ sudo apt-get install -y jq
+```
+
+Another alternative is to use a GUI client like
+.<https://chrome.google.com/webstore/detail/restlet-client-rest-api-t/aejoelaoggembcahagimdiliamlcdmfm?hl=en> Restlet.
+
+			Hints
+			=====
+
+This project merely requires four handler functions for the four
+required web services plus any auxiliary functions you may choose to
+define.
+
+The following steps are not prescriptive in that you may choose to ignore
+them as long as you meet all project requirements.
+
+  # Read the project requirements thoroughly.  Look at the sample
+    .<./aux/LOG> log to make sure you understand the necessary
+    behavior and play with the solution available on
+    .<http://zdu.binghamton.edu:1235> "".
+
+  # Study the .<../../slides/user-ws/user-ws.pdf> "User Web Services"
+    .<../../slides/user-ws/code/user-ws> code discussed in class.
+    In particular, note the set up of the routes as well as the
+    wrapping of handlers to ensure that any server errors are
+    handled properly.
+
+  # You can use the provided `doc-finder` project as a module
+    in this project.  Install its dependencies:
+
+    ```
+    $ cd ~/cs580w/lib/doc-finder
+    $ npm install
+    ```
+
+    You should be able to run the project using `./docs-cli.js`,
+    with the same command-line behavior as your previous project.
+
+  # Start your project by creating a `work/prj3-sol` directory.
+    Change into that directory and initialize your project
+    by running `npm init -y`.  This will create a `package.json`
+    file; this file should be committed to your repository.
+
+  # Copy the provided files into your project directory:
+
+    ```
+    $ cp -p $HOME/cs580w/projects/prj3/prj3-sol/* .
+    ```
+
+    This should copy in the `README` template, the `index.js`
+    command-line interface program, and the `docs-ws.js` skeleton file
+    into your project directory.
+
+  # Install project dependencies.  Minimally, you will need
+    `cors`, `express.js` and the locally installed doc-finder module:
+
+    ```
+    $ npm install cors express ~/cs580w/lib/doc-finder
+    ```
+
+    Note that npm will install the local `doc-finder` module
+    by creating symlinks in your `node_modules` directory.
+    You should be able to run its command-line interface:
+    
+
+    ```
+    $ ./node_modules/.bin/doc-finder
+    ```
+
+
+  # You should now be able to run the project: 
+
+    ```
+    $ ./index.js
+    usage: index.js MONGO_DB_URL PORT NOISE_FILE [CONTENT_FILE...]
+    $
+    ```
+
+  # You will need to add routes to the provided `docs-ws.js` skeleton
+    file.  Start by adding a route for the *Get Content* service.  You
+    will need to use a simple pattern to match the document name.
+    Within your handler, you can access what matched a pattern
+    identifier by using that identifier as a property on `req.params`.
+
+    First simply ensure that you can use the `docContent()`
+    `DocFinder` method to return the requested content.  Then return a
+    JSON object as per the specs; you can use the provided `baseUrl()`
+    function to help build the URL needed for the required `self` link
+    in the response.
+
+  # Implement the *Get Completions* service using the `complete()`
+    `DocFinder` method.  You can access query parameters as properties
+    of the `req.query` object.  Add verification to return a suitable
+    error response when the `text` query parameter is missing.
+
+  # Implement the *Search Content* service using the `find()` `DocFinder()`
+    method (note that the change in specs for `find()` from your previous
+    project allows you to provide the `q` parameter directly
+    as its argument).  Note that you will need to add a suitable
+    `href` property to each result returned by the `find()` method.
+
+    You should probably split off validations for the query parameters
+    and assembly of the response into auxiliary functions.  You can
+    use JavaScript's `Number()` function to convert from the incoming
+    `String` parameters to numbers.
+
+  # Implement the *Add Content* service using the `addContent()`
+    `DocFinder` method.  
+
+  # Iterate until you meet all requirements.
+
+
+
+			Logs to access RestAPI using CURL
+			==============================
+#setup sh vars
+$ DATA=$HOME/cs580w/data
+$ SNARK=$DATA/corpus/snark
+$ TESTS=$DATA/corpus/tests
+
+#show usage message
+./index.js
+usage: index.js MONGO_DB_URL PORT NOISE_FILE [CONTENT_FILE...]
+
+#start ws services in background using trailing &
+$ ./index.js mongodb://localhost:27017/docs 1235
+    $DATA/noise-words.txt $SNARK/_*.txt &
+[1] 3155
+$ PID 3155 listening on port 1235
+
+#file .pid contains server PID
+$ cat .pid
+3155
+
+#bad query; HTTP_STATUS is 400 BAD_REQUEST;
+#using jq . to pretty-print json (could also use json_pp);
+#the -s curl option makes curl silent.
+$ curl -s 'http://localhost:1235/docs' | jq .
+{
+  "code": "BAD_PARAM",
+  "message": "required query parameter \"q\" is missing"
+}
+
+#search for 'beaver daylight'; note %20 used to quote space
+#note no previous link as first set of results
+$ curl -s 'http://localhost:1235/docs?q=beaver%20daylight' | jq .
+{
+  "results": [
+    {
+      "name": "_the-hunting-of-the-snark_135",
+      "score": 2,
+      "lines": [
+        "   And the Beaver, excited at last,\n",
+        "   For the daylight was nearly past.\n"
+      ],
+      "href": "http://localhost:1235/docs/_the-hunting-of-the-snark_135"
+    },
+    {
+      "name": "_the-hunting-of-the-snark_006",
+      "score": 1,
+      "lines": [
+        "There was also a Beaver, that paced on the deck,\n"
+      ],
+      "href": "http://localhost:1235/docs/_the-hunting-of-the-snark_006"
+    },
+    {
+      "name": "_the-hunting-of-the-snark_017",
+      "score": 1,
+      "lines": [
+        "   There was only one Beaver on board;\n"
+      ],
+      "href": "http://localhost:1235/docs/_the-hunting-of-the-snark_017"
+    },
+    {
+      "name": "_the-hunting-of-the-snark_018",
+      "score": 1,
+      "lines": [
+        "The Beaver, who happened to hear the remark,\n"
+      ],
+      "href": "http://localhost:1235/docs/_the-hunting-of-the-snark_018"
+    },
+    {
+      "name": "_the-hunting-of-the-snark_021",
+      "score": 1,
+      "lines": [
+        "The Beaver's best course was, no doubt, to procure\n"
+      ],
+      "href": "http://localhost:1235/docs/_the-hunting-of-the-snark_021"
+    }
+  ],
+  "totalCount": 17,
+  "links": [
+    {
+      "rel": "self",
+      "href": "http://localhost:1235/docs?q=beaver%20daylight&start=0&count=5"
+    },
+    {
+      "rel": "next",
+      "href": "http://localhost:1235/docs?q=beaver%20daylight&start=5&count=5"
+    }
+  ]
+}
